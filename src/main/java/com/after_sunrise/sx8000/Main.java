@@ -126,7 +126,7 @@ public class Main {
 
 		logger.info(String.format("Connecting : %s (user=%s)", jdbcUrl, jdbcUser));
 		try (Connection conn = DriverManager.getConnection(jdbcUrl, jdbcUser, StringUtils.chomp(readText(jdbcPass)));
-		     Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(readText(jdbcQuery))) {
+		     Statement stmt = getConnStatement(conn); ResultSet rs = stmt.executeQuery(readText(jdbcQuery))) {
 
 			final OutputStream os;
 			final Function<OutputStream, OutputStream> osWrapper;
@@ -204,6 +204,16 @@ public class Main {
 				logger.info(String.format("Generated checksum : %s - %s", path, hash));
 			}
 		}
+	}
+
+	private Statement getConnStatement(Connection conn) throws SQLException {
+		final Statement statement = conn.createStatement();
+		if (statement.getClass().getName().equals("com.mysql.cj.jdbc.StatementImpl")) {
+			// to avoid out of memory when transferring huge resultSet we need to NOT load all data in memory
+			// https://stackoverflow.com/questions/26046234/is-there-a-mysql-jdbc-that-will-respect-fetchsize
+			statement.setFetchSize(Integer.MIN_VALUE);
+		}
+		return statement;
 	}
 
 	String formatValue(Object object, int columnIndex, ResultSetMetaData meta) throws SQLException {
