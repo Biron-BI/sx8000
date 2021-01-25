@@ -149,10 +149,13 @@ public class Main {
 				     @Override
 				     protected boolean stringContainsSpecialCharacters(String v) {
 					     return v != nullReplacement && (
-							     super.stringContainsSpecialCharacters(v)
+							     csvQuoteAll
+									     || super.stringContainsSpecialCharacters(v)
 									     || v.indexOf('\'') != -1
 									     || v.indexOf('\\') != -1
 									     || v.startsWith("[")
+									     || v.startsWith(" ") || v.endsWith(" ")
+									     || v.startsWith("\t") || v.endsWith("\t")
 					     );
 				     }
 			     }) {
@@ -180,7 +183,7 @@ public class Main {
 					for (int i = 0; i < values.length; i++) {
 						values[i] = formatValue(rs.getObject(i + 1), i + 1, meta);
 					}
-					csv.writeNext(values, csvQuoteAll);
+					csv.writeNext(values, false);
 					count++;
 					if (shouldFlush(count, flush)) {
 						csv.flush();
