@@ -19,6 +19,7 @@ import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.sql.*;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -226,6 +227,8 @@ public class Main {
 		} else {
 			if (timestampFormat != null && object instanceof Timestamp) {
 				return timestampFormat.format(((Timestamp) object).toInstant());
+			} else if (timestampFormat != null && object instanceof LocalDateTime) {
+				return timestampFormat.format((LocalDateTime) object);
 			} else if (arrayInSquareBrackets && object instanceof Array) {
 				final Object javaArray = ((Array) object).getArray();
 				final int length = java.lang.reflect.Array.getLength(javaArray);
