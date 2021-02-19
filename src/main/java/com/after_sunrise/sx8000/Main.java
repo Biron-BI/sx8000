@@ -18,10 +18,12 @@ import java.nio.file.StandardOpenOption;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.sql.*;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
@@ -40,6 +42,13 @@ import static java.nio.file.StandardOpenOption.*;
  * @version 0.0.0
  */
 public class Main {
+
+	private static final Calendar zeroedCalendar;
+
+	static {
+		zeroedCalendar = Calendar.getInstance();
+		zeroedCalendar.set(1, 0, 1, 0, 0, 0);
+	}
 
 	public static void main(String[] args) throws Exception {
 		Main main = new Main();
@@ -180,8 +189,9 @@ public class Main {
 
 				long count = 0;
 				while (rs.next()) {
-					for (int i = 0; i < values.length; i++) {
-						values[i] = formatValue(rs.getObject(i + 1), i + 1, meta);
+					for (int colIndex = 0; colIndex < values.length; colIndex++) {
+						int rsIndex = colIndex + 1;
+						values[colIndex] = formatValue(getValue(rs, rsIndex, meta), rsIndex, meta);
 					}
 					csv.writeNext(values, false);
 					count++;
@@ -208,6 +218,31 @@ public class Main {
 				logger.info(String.format("Generated checksum : %s - %s", path, hash));
 			}
 		}
+	}
+
+	private Object getValue(ResultSet rs, int rsIndex, ResultSetMetaData meta) throws SQLException {
+		final Object value;
+		try {
+			value = rs.getObject(rsIndex);
+		} catch (SQLException e) {
+			final int columnType = meta.getColumnType(rsIndex);
+			final Throwable cause = e.getCause();
+			if (columnType == Types.DATE && cause.getClass().getName().equals("com.mysql.cj.exceptions.WrongArgumentException") &&
+					(cause.getMessage().equals("YEAR") || cause.getMessage().equals("MONTH") || cause.getMessage().equals("DAY_OF_MONTH"))) {
+				return new java.sql.Date(zeroedCalendar.getTimeInMillis());
+			} else if (columnType == Types.TIME && cause.getClass().getName().equals("com.mysql.cj.exceptions.DataReadException") &
+					cause.getMessage().contains("is an invalid TIME value")) {
+				return new java.sql.Time(zeroedCalendar.getTimeInMillis());
+			}
+			throw e;
+		} catch (DateTimeException e) {
+			final int columnType = meta.getColumnType(rsIndex);
+			if (columnType == Types.TIMESTAMP && e.getMessage().startsWith("Invalid value for ")) {
+				return new java.sql.Timestamp(zeroedCalendar.getTimeInMillis());
+			}
+			throw e;
+		}
+		return value;
 	}
 
 	private Statement getConnStatement(Connection conn) throws SQLException {
