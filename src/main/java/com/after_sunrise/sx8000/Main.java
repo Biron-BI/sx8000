@@ -251,6 +251,8 @@ public class Main {
 			// to avoid out of memory when transferring huge resultSet we need to NOT load all data in memory
 			// https://stackoverflow.com/questions/26046234/is-there-a-mysql-jdbc-that-will-respect-fetchsize
 			statement.setFetchSize(Integer.MIN_VALUE);
+		} else {
+			statement.setFetchSize(flush);
 		}
 		return statement;
 	}
