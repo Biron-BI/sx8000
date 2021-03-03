@@ -246,6 +246,7 @@ public class Main {
 	}
 
 	private Statement getConnStatement(Connection conn) throws SQLException {
+		conn.setAutoCommit(false);
 		final Statement statement = conn.createStatement();
 		if (statement.getClass().getName().equals("com.mysql.cj.jdbc.StatementImpl")) {
 			// to avoid out of memory when transferring huge resultSet we need to NOT load all data in memory
