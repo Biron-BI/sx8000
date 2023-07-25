@@ -3,6 +3,7 @@ package com.after_sunrise.sx8000;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.opencsv.CSVWriter;
+import oracle.sql.Datum;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.compress.utils.CountingOutputStream;
@@ -50,6 +51,51 @@ public class Main {
 		zeroedCalendar.set(1, 0, 1, 0, 0, 0);
 	}
 
+	private final Logger logger = Logger.getLogger(getClass().getSimpleName());
+	private DateTimeFormatter timestampFormat;
+	@Parameter(names = {"-j", "--driver"}, description = "JDBC driver class.")
+	private String jdbcDriver = "org.h2.Driver";
+	@Parameter(names = {"-u", "--url"}, description = "JDBC URL.")
+	private String jdbcUrl = "jdbc:h2:mem:";
+	@Parameter(names = {"-l", "--user"}, description = "JDBC login user.")
+	private String jdbcUser = "sa";
+	@Parameter(names = {"-p", "--pass"}, description = "JDBC login password. \"classpath:\" or \"filepath:\" prefix can be used to read from a file.")
+	private String jdbcPass = null;
+	@Parameter(names = {"-s", "--statement"}, description = "JDBC SQL statement. \"classpath:\" or \"filepath:\" prefix can be used to read from a file.")
+	private String jdbcQuery = "select now() as \"time\"";
+	@Parameter(names = {"-o", "--out"}, description = "File output path. To output to stdin pass \"-\".")
+	private String outReq = "-";
+	@Parameter(names = {"-w", "--write"}, description = "File write mode. Specify \"CREATE_NEW\" to fail if the output already exists.")
+	private StandardOpenOption writeMode = TRUNCATE_EXISTING;
+	@Parameter(names = {"-e", "--encoding"}, description = "Output file encoding. (cf: \"ISO-8859-1\", \"UTF-16\")")
+	private String encoding = StandardCharsets.UTF_8.name();
+	@Parameter(names = {"-n", "--nullReplacement"}, description = "A replacement value for NULL one.")
+	private String nullReplacement = null;
+	@Parameter(names = {"--timestampFormatPattern"}, description = "An optional pattern to format Timestamp according to https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns.")
+	private String timestampFormatPattern = null;
+	@Parameter(names = {"-b", "--booleanAsInt"}, description = "Should boolean be converted to int (0, 1) ?", arity = 1)
+	private boolean booleanAsInt = true;
+	@Parameter(names = {"--arrayInSquareBrackets"}, description = "Should array values be enclosed in square brackets ?", arity = 1)
+	private boolean arrayInSquareBrackets = true;
+	@Parameter(names = {"--quoteAll"}, description = "Should all CSV column be quoted with the quote character ?", arity = 1)
+	private boolean csvQuoteAll = true;
+	@Parameter(names = {"-d", "--delimiter"}, description = "CSV column delimiter character.", converter = CharacterConverter.class)
+	private char csvSeparator = CSVWriter.DEFAULT_SEPARATOR;
+	@Parameter(names = {"-q", "--quote"}, description = "CSV column quote character.", converter = CharacterConverter.class)
+	private char csvQuoteChar = CSVWriter.DEFAULT_QUOTE_CHARACTER;
+	@Parameter(names = {"-x", "--escape"}, description = "CSV escape character.", converter = CharacterConverter.class)
+	private char csvEscapeChar = CSVWriter.DEFAULT_ESCAPE_CHARACTER;
+	@Parameter(names = {"-t", "--terminator"}, description = "CSV line terminator.", hidden = true)
+	private String csvLineEnd = CSVWriter.DEFAULT_LINE_END;
+	@Parameter(names = {"-h", "--header"}, description = "Include CSV header row.", arity = 1)
+	private boolean csvHeader = true;
+	@Parameter(names = {"-f", "--flush"}, description = "Number of lines written to trigger intermediary flush.")
+	private int flush = 0;
+	@Parameter(names = {"-c", "--checksum"}, description = "Generate checksum file.", arity = 1)
+	private boolean checksum = false;
+	@Parameter(names = {"-a", "--algorithm"}, description = "Algorithm of the checksum. (cf: \"MD5\", \"SHA-1\")")
+	private String algorithm = "SHA-256";
+
 	public static void main(String[] args) throws Exception {
 		Main main = new Main();
 		JCommander commander = JCommander.newBuilder().addObject(main).build();
@@ -60,73 +106,6 @@ public class Main {
 			main.execute();
 		}
 	}
-
-	private final Logger logger = Logger.getLogger(getClass().getSimpleName());
-
-	private DateTimeFormatter timestampFormat;
-
-	@Parameter(names = {"-j", "--driver"}, description = "JDBC driver class.")
-	private String jdbcDriver = "org.h2.Driver";
-
-	@Parameter(names = {"-u", "--url"}, description = "JDBC URL.")
-	private String jdbcUrl = "jdbc:h2:mem:";
-
-	@Parameter(names = {"-l", "--user"}, description = "JDBC login user.")
-	private String jdbcUser = "sa";
-
-	@Parameter(names = {"-p", "--pass"}, description = "JDBC login password. \"classpath:\" or \"filepath:\" prefix can be used to read from a file.")
-	private String jdbcPass = null;
-
-	@Parameter(names = {"-s", "--statement"}, description = "JDBC SQL statement. \"classpath:\" or \"filepath:\" prefix can be used to read from a file.")
-	private String jdbcQuery = "select now() as \"time\"";
-
-	@Parameter(names = {"-o", "--out"}, description = "File output path. To output to stdin pass \"-\".")
-	private String outReq = "-";
-
-	@Parameter(names = {"-w", "--write"}, description = "File write mode. Specify \"CREATE_NEW\" to fail if the output already exists.")
-	private StandardOpenOption writeMode = TRUNCATE_EXISTING;
-
-	@Parameter(names = {"-e", "--encoding"}, description = "Output file encoding. (cf: \"ISO-8859-1\", \"UTF-16\")")
-	private String encoding = StandardCharsets.UTF_8.name();
-
-	@Parameter(names = {"-n", "--nullReplacement"}, description = "A replacement value for NULL one.")
-	private String nullReplacement = null;
-
-	@Parameter(names = {"--timestampFormatPattern"}, description = "An optional pattern to format Timestamp according to https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns.")
-	private String timestampFormatPattern = null;
-
-	@Parameter(names = {"-b", "--booleanAsInt"}, description = "Should boolean be converted to int (0, 1) ?", arity = 1)
-	private boolean booleanAsInt = true;
-
-	@Parameter(names = {"--arrayInSquareBrackets"}, description = "Should array values be enclosed in square brackets ?", arity = 1)
-	private boolean arrayInSquareBrackets = true;
-
-	@Parameter(names = {"--quoteAll"}, description = "Should all CSV column be quoted with the quote character ?", arity = 1)
-	private boolean csvQuoteAll = true;
-
-	@Parameter(names = {"-d", "--delimiter"}, description = "CSV column delimiter character.", converter = CharacterConverter.class)
-	private char csvSeparator = CSVWriter.DEFAULT_SEPARATOR;
-
-	@Parameter(names = {"-q", "--quote"}, description = "CSV column quote character.", converter = CharacterConverter.class)
-	private char csvQuoteChar = CSVWriter.DEFAULT_QUOTE_CHARACTER;
-
-	@Parameter(names = {"-x", "--escape"}, description = "CSV escape character.", converter = CharacterConverter.class)
-	private char csvEscapeChar = CSVWriter.DEFAULT_ESCAPE_CHARACTER;
-
-	@Parameter(names = {"-t", "--terminator"}, description = "CSV line terminator.", hidden = true)
-	private String csvLineEnd = CSVWriter.DEFAULT_LINE_END;
-
-	@Parameter(names = {"-h", "--header"}, description = "Include CSV header row.", arity = 1)
-	private boolean csvHeader = true;
-
-	@Parameter(names = {"-f", "--flush"}, description = "Number of lines written to trigger intermediary flush.")
-	private int flush = 0;
-
-	@Parameter(names = {"-c", "--checksum"}, description = "Generate checksum file.", arity = 1)
-	private boolean checksum = false;
-
-	@Parameter(names = {"-a", "--algorithm"}, description = "Algorithm of the checksum. (cf: \"MD5\", \"SHA-1\")")
-	private String algorithm = "SHA-256";
 
 	void execute() throws Exception {
 		logger.info("Executing...");
@@ -220,44 +199,6 @@ public class Main {
 		}
 	}
 
-	private Object getValue(ResultSet rs, int rsIndex, ResultSetMetaData meta) throws SQLException {
-		final Object value;
-		try {
-			value = rs.getObject(rsIndex);
-		} catch (SQLException e) {
-			final int columnType = meta.getColumnType(rsIndex);
-			final Throwable cause = e.getCause();
-			if (columnType == Types.DATE && cause.getClass().getName().equals("com.mysql.cj.exceptions.WrongArgumentException") &&
-					(cause.getMessage().equals("YEAR") || cause.getMessage().equals("MONTH") || cause.getMessage().equals("DAY_OF_MONTH"))) {
-				return new java.sql.Date(zeroedCalendar.getTimeInMillis());
-			} else if (columnType == Types.TIME && cause.getClass().getName().equals("com.mysql.cj.exceptions.DataReadException") &
-					cause.getMessage().contains("is an invalid TIME value")) {
-				return new java.sql.Time(zeroedCalendar.getTimeInMillis());
-			}
-			throw e;
-		} catch (DateTimeException e) {
-			final int columnType = meta.getColumnType(rsIndex);
-			if (columnType == Types.TIMESTAMP && e.getMessage().startsWith("Invalid value for ")) {
-				return new java.sql.Timestamp(zeroedCalendar.getTimeInMillis());
-			}
-			throw e;
-		}
-		return value;
-	}
-
-	private Statement getConnStatement(Connection conn) throws SQLException {
-		conn.setAutoCommit(false);
-		final Statement statement = conn.createStatement();
-		if (statement.getClass().getName().equals("com.mysql.cj.jdbc.StatementImpl")) {
-			// to avoid out of memory when transferring huge resultSet we need to NOT load all data in memory
-			// https://stackoverflow.com/questions/26046234/is-there-a-mysql-jdbc-that-will-respect-fetchsize
-			statement.setFetchSize(Integer.MIN_VALUE);
-		} else {
-			statement.setFetchSize(flush);
-		}
-		return statement;
-	}
-
 	String formatValue(Object object, int columnIndex, ResultSetMetaData meta) throws SQLException {
 		if (object == null) {
 			if (arrayInSquareBrackets && meta.getColumnType(columnIndex) == Types.ARRAY) {
@@ -266,7 +207,9 @@ public class Main {
 				return nullReplacement;
 			}
 		} else {
-			if (timestampFormat != null && object instanceof Timestamp) {
+			if (object instanceof Datum) { // oracle specific ...
+				return formatValue(((Datum) object).toJdbc(), columnIndex, meta);
+			} else if (timestampFormat != null && object instanceof Timestamp) {
 				return timestampFormat.format(((Timestamp) object).toInstant());
 			} else if (timestampFormat != null && object instanceof LocalDateTime) {
 				return timestampFormat.format((LocalDateTime) object);
@@ -341,6 +284,44 @@ public class Main {
 
 	boolean shouldFlush(long count, int flush) {
 		return flush > 0 && count % flush == 0;
+	}
+
+	private Object getValue(ResultSet rs, int rsIndex, ResultSetMetaData meta) throws SQLException {
+		final Object value;
+		try {
+			value = rs.getObject(rsIndex);
+		} catch (SQLException e) {
+			final int columnType = meta.getColumnType(rsIndex);
+			final Throwable cause = e.getCause();
+			if (columnType == Types.DATE && cause.getClass().getName().equals("com.mysql.cj.exceptions.WrongArgumentException") &&
+					(cause.getMessage().equals("YEAR") || cause.getMessage().equals("MONTH") || cause.getMessage().equals("DAY_OF_MONTH"))) {
+				return new java.sql.Date(zeroedCalendar.getTimeInMillis());
+			} else if (columnType == Types.TIME && cause.getClass().getName().equals("com.mysql.cj.exceptions.DataReadException") &
+					cause.getMessage().contains("is an invalid TIME value")) {
+				return new java.sql.Time(zeroedCalendar.getTimeInMillis());
+			}
+			throw e;
+		} catch (DateTimeException e) {
+			final int columnType = meta.getColumnType(rsIndex);
+			if (columnType == Types.TIMESTAMP && e.getMessage().startsWith("Invalid value for ")) {
+				return new java.sql.Timestamp(zeroedCalendar.getTimeInMillis());
+			}
+			throw e;
+		}
+		return value;
+	}
+
+	private Statement getConnStatement(Connection conn) throws SQLException {
+		conn.setAutoCommit(false);
+		final Statement statement = conn.createStatement();
+		if (statement.getClass().getName().equals("com.mysql.cj.jdbc.StatementImpl")) {
+			// to avoid out of memory when transferring huge resultSet we need to NOT load all data in memory
+			// https://stackoverflow.com/questions/26046234/is-there-a-mysql-jdbc-that-will-respect-fetchsize
+			statement.setFetchSize(Integer.MIN_VALUE);
+		} else {
+			statement.setFetchSize(flush);
+		}
+		return statement;
 	}
 
 }
