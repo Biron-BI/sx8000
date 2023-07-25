@@ -208,7 +208,10 @@ public class Main {
 			}
 		} else {
 			if (object instanceof Datum) { // oracle specific ...
-				return formatValue(((Datum) object).toJdbc(), columnIndex, meta);
+				final Object possibleJdbcValue = ((Datum) object).toJdbc();
+				if (!(possibleJdbcValue instanceof Datum)) { // avoid StackOverflowError, for example with oracle.sql.BLOB
+					return formatValue(possibleJdbcValue, columnIndex, meta);
+				}
 			} else if (timestampFormat != null && object instanceof Timestamp) {
 				return timestampFormat.format(((Timestamp) object).toInstant());
 			} else if (timestampFormat != null && object instanceof LocalDateTime) {
@@ -223,9 +226,8 @@ public class Main {
 				return "[" + StringUtils.join(values, ",") + "]";
 			} else if (booleanAsInt && object instanceof Boolean) {
 				return ((Boolean) object) ? "1" : "0";
-			} else {
-				return object.toString();
 			}
+			return object.toString();
 		}
 	}
 
