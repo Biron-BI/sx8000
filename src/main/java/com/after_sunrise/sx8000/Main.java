@@ -295,8 +295,8 @@ public class Main {
 		} catch (SQLException e) {
 			final int columnType = meta.getColumnType(rsIndex);
 			final Throwable cause = e.getCause();
-			if (columnType == Types.DATE && cause.getClass().getName().equals("com.mysql.cj.exceptions.WrongArgumentException") &&
-					(cause.getMessage().equals("YEAR") || cause.getMessage().equals("MONTH") || cause.getMessage().equals("DAY_OF_MONTH"))) {
+			if ((columnType == Types.DATE || columnType == Types.TIMESTAMP) && cause.getClass().getName().equals("com.mysql.cj.exceptions.WrongArgumentException") &&
+					(cause.getMessage().equals("YEAR") || cause.getMessage().equals("MONTH") || cause.getMessage().equals("DAY_OF_MONTH") || cause.getMessage().startsWith("HOUR_OF_DAY"))) {
 				return new java.sql.Date(zeroedCalendar.getTimeInMillis());
 			} else if (columnType == Types.TIME && cause.getClass().getName().equals("com.mysql.cj.exceptions.DataReadException") &
 					cause.getMessage().contains("is an invalid TIME value")) {

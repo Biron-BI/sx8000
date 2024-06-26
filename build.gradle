@@ -28,7 +28,7 @@ dependencies {
 }
 
 group 'com.after_sunrise.sx8000'
-version '0.4.17'
+version '0.4.18'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
